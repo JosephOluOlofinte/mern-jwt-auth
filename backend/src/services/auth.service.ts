@@ -1,12 +1,12 @@
 import { JWT_REFRESH_SECRET, JWT_SECRET } from "../constants/env";
 import jwt from "jsonwebtoken";
 import VerificationCodeType from "../constants/verificationCodeTypes";
-import sessionModel from "../models/session.model";
+import SessionModel from "../models/session.model";
 import UserModel from "../models/user.model";
 import VerificationCodeModel from "../models/verificationCode.model";
 import { oneYearFromNow } from "../utils/date";
 import appAssert from "../utils/appAssert";
-import { CONFLICT } from "../constants/http";
+import { CONFLICT, UNAUTHORIZED } from "../constants/http";
 
 export type CreateAccountParams = {
     email: string;
@@ -43,7 +43,7 @@ export const createAccount = async(data:CreateAccountParams) => {
   // send a verification email
 
   // create a new session
-  const session = await sessionModel.create({
+  const session = await SessionModel.create({
     userId: user._id,
     userAgent: data.userAgent,
   })
@@ -80,3 +80,62 @@ export const createAccount = async(data:CreateAccountParams) => {
     refreshToken,
   };
 };
+
+type LoginParams = {
+  email: string;
+  password: string;
+  userAgent?: string;
+}
+
+export const loginUser = async(
+  {
+    email, password, userAgent
+  }: LoginParams
+) => {
+  // verify if the user exists
+  const user = await UserModel.findOne({ email });
+  appAssert(user, UNAUTHORIZED, "Invalid email or password");
+
+  const isValid = await user.comparePassword(password);
+  appAssert(isValid, UNAUTHORIZED, "Invalid emaillllll or password");
+
+  // create a session
+  const userId = user._id;
+  const session = await SessionModel.create({
+    userId,
+    userAgent,
+  });
+
+  const sessionInfo = {
+    session: session._id,
+  }
+
+  // sign access and refresh tokens
+  const refreshToken = jwt.sign(
+    sessionInfo,
+    JWT_REFRESH_SECRET,
+    {
+      audience: ["user"],
+      expiresIn: "30d",
+    }
+  );
+
+  const accessToken = jwt.sign(
+    {
+      ...sessionInfo,
+      userId: user._id,
+    },
+    JWT_SECRET,
+    {
+      audience: ["user"],
+      expiresIn: "15m",
+    }
+  );
+
+  // return the user and tokens
+  return {
+    user: user.omitPassword(),
+    accessToken,
+    refreshToken,
+  };
+}

@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema<UserDocument>({
     },
     verified: {
         type: Boolean,
+        required: true,
         default: false,
     },
 }, {
@@ -42,7 +43,7 @@ userSchema.pre("save", async function (next) {
     }
 
     this.password = await hashValue(this.password);
-    next();
+    return next();
 });
 
 userSchema.methods.comparePassword = async function (value: string) {
