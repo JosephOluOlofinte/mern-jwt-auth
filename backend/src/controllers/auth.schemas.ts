@@ -23,3 +23,5 @@ export const registerSchema = loginSchema.extend({
     }
 )
 
+export const verificationCodeSchema = z.string().min(1).max(24)
+

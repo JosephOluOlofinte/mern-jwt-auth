@@ -1,9 +1,9 @@
 import { z } from "zod";
 import catchErrors from "../utils/catchErrors";
-import { createAccount, loginUser, refreshUserAccessToken } from "../services/auth.service";
+import { createAccount, loginUser, refreshUserAccessToken, verifyEmail } from "../services/auth.service";
 import { CREATED, OK, UNAUTHORIZED } from "../constants/http";
 import { clearAuthCookies, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, setAuthCookies } from "../utils/cookies";
-import { loginSchema, registerSchema } from "./auth.schemas";
+import { loginSchema, registerSchema, verificationCodeSchema } from "./auth.schemas";
 import { verifyToken } from "../utils/jwt";
 import SessionModel from "../models/session.model";
 import appAssert from "../utils/appAssert";
@@ -67,7 +67,7 @@ export const loginHandler = catchErrors(
     clearAuthCookies(res);
     return res.status(OK).json({
         status: "success",
-        message: "You have successfully logged out",
+        message: "You have successfully logged out!",
     });
  });
 
@@ -83,6 +83,17 @@ export const loginHandler = catchErrors(
 
     return res.status(OK).cookie("accessToken", accessToken, getAccessTokenCookieOptions()).json({
         status: "success",
-        message: "Access token refreshed successfully",
+        message: "Access token refreshed successfully!",
  });
 });
+
+export const verifyEmailHandler = catchErrors(async (req, res) => {
+    // validate the request
+    const verificationCode = verificationCodeSchema.parse(req.params.code);
+
+    await verifyEmail(verificationCode);
+    return res.status(OK).json({
+        status: "success",
+        message: "Email successfully verified!",
+    });
+})

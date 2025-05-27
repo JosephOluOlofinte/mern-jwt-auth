@@ -6,7 +6,7 @@ import UserModel from "../models/user.model";
 import VerificationCodeModel from "../models/verificationCode.model";
 import { ONE_DAY_IN_MS, oneYearFromNow, thirtyDaysFromNow } from "../utils/date";
 import appAssert from "../utils/appAssert";
-import { CONFLICT, UNAUTHORIZED } from "../constants/http";
+import { CONFLICT, INTERNAL_SERVER_ERROR, NOT_FOUND, UNAUTHORIZED } from "../constants/http";
 import { RefreshTokenPayload, refreshTokenSignOptions, signToken, verifyToken } from "../utils/jwt";
 
 
@@ -162,5 +162,29 @@ export const refreshUserAccessToken = async (refreshToken: string) => {
   return {
     accessToken,
     newRefreshToken,
+  };
+}
+
+export const verifyEmail = async(code: string) => {
+  // get the ver code
+  const validCode = await VerificationCodeModel.findOne({
+    _id: code,
+    type: VerificationCodeType.EmailVerification,
+    expiresAt: { $gt: new Date() },
+  })
+
+  appAssert(validCode, NOT_FOUND, "Invalid or expired verification code");
+
+  // update user to verified true
+  const updatedUser = await UserModel.findByIdAndUpdate(validCode.userId, { verified: true }, { new: true });
+
+  appAssert(updatedUser, INTERNAL_SERVER_ERROR, "Failed to verify email address");
+
+  // delete ver code
+  await validCode.deleteOne();
+
+  // return user
+  return {
+    user: updatedUser.omitPassword(),
   };
 }
