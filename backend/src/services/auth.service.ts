@@ -7,6 +7,7 @@ import VerificationCodeModel from "../models/verificationCode.model";
 import { oneYearFromNow } from "../utils/date";
 import appAssert from "../utils/appAssert";
 import { CONFLICT, UNAUTHORIZED } from "../constants/http";
+import { refreshTokenSignOptions, signToken } from "../utils/jwt";
 
 export type CreateAccountParams = {
     email: string;
@@ -32,10 +33,12 @@ export const createAccount = async(data:CreateAccountParams) => {
         password: data.password,
     });
 
+    const userId = user._id;
+
 
   // create a verification code
     const verificationCode = await VerificationCodeModel.create({
-        userId: user._id,
+        userId,
         type: VerificationCodeType.EmailVerification,
         expiresAt: oneYearFromNow(),
     })
@@ -44,33 +47,23 @@ export const createAccount = async(data:CreateAccountParams) => {
 
   // create a new session
   const session = await SessionModel.create({
-    userId: user._id,
+    userId,
     userAgent: data.userAgent,
   })
   
 
   // sign access and refresh tokens
-  const refreshToken = jwt.sign(
+  const refreshToken = signToken(
     { 
-      session: session._id 
-    },
-    JWT_REFRESH_SECRET,
-    { 
-      audience: ['user'],
-      expiresIn: "30d" 
-    },
+      sessionId: session._id 
+    }, refreshTokenSignOptions
   );
 
-  const accessToken = jwt.sign(
+  const accessToken = signToken(
     {
-      userId: user._id,
-      session: session._id,
+      userId,
+      sessionId: session._id,
     },
-    JWT_SECRET,
-    {
-      audience: ["user"],
-      expiresIn: "15m",
-    }
   );
 
   // return the user and tokens
@@ -85,7 +78,7 @@ type LoginParams = {
   email: string;
   password: string;
   userAgent?: string;
-}
+};
 
 export const loginUser = async(
   {
@@ -97,7 +90,7 @@ export const loginUser = async(
   appAssert(user, UNAUTHORIZED, "Invalid email or password");
 
   const isValid = await user.comparePassword(password);
-  appAssert(isValid, UNAUTHORIZED, "Invalid emaillllll or password");
+  appAssert(isValid, UNAUTHORIZED, "Invalid email or password");
 
   // create a session
   const userId = user._id;
@@ -107,30 +100,17 @@ export const loginUser = async(
   });
 
   const sessionInfo = {
-    session: session._id,
+    sessionId: session._id,
   }
 
   // sign access and refresh tokens
-  const refreshToken = jwt.sign(
-    sessionInfo,
-    JWT_REFRESH_SECRET,
-    {
-      audience: ["user"],
-      expiresIn: "30d",
-    }
-  );
+  const refreshToken = signToken(sessionInfo, refreshTokenSignOptions)
+  
 
-  const accessToken = jwt.sign(
-    {
-      ...sessionInfo,
-      userId: user._id,
-    },
-    JWT_SECRET,
-    {
-      audience: ["user"],
-      expiresIn: "15m",
-    }
-  );
+  const accessToken = signToken(
+    { ...sessionInfo, userId: user._id }
+  )
+
 
   // return the user and tokens
   return {
