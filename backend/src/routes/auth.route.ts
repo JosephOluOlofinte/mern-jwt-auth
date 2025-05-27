@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { loginHandler, logoutHandler, registerHandler } from "../controllers/auth.controller";
+import { loginHandler, logoutHandler, refreshHandler, registerHandler } from "../controllers/auth.controller";
 
 
 const authRoutes = Router();
@@ -8,6 +8,7 @@ const authRoutes = Router();
 authRoutes.post('/register', registerHandler);
 authRoutes.post('/login', loginHandler);
 authRoutes.get("/logout", logoutHandler);
+authRoutes.get("/refresh", refreshHandler);
 
 export default authRoutes;
 // This is a simple auth route file that handles user registration and login

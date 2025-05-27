@@ -1,11 +1,12 @@
 import { z } from "zod";
 import catchErrors from "../utils/catchErrors";
-import { createAccount, loginUser } from "../services/auth.service";
-import { CREATED, OK } from "../constants/http";
-import { clearAuthCookies, setAuthCookies } from "../utils/cookies";
+import { createAccount, loginUser, refreshUserAccessToken } from "../services/auth.service";
+import { CREATED, OK, UNAUTHORIZED } from "../constants/http";
+import { clearAuthCookies, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, setAuthCookies } from "../utils/cookies";
 import { loginSchema, registerSchema } from "./auth.schemas";
 import { verifyToken } from "../utils/jwt";
 import SessionModel from "../models/session.model";
+import appAssert from "../utils/appAssert";
 
 
 
@@ -54,8 +55,8 @@ export const loginHandler = catchErrors(
  });
 
  export const logoutHandler = catchErrors(async (req, res) => {
-   const accessToken = req.cookies.accessToken;
-   const { payload } = verifyToken(accessToken);
+   const accessToken = req.cookies.accessToken as string | undefined;
+   const { payload } = verifyToken(accessToken || "");
 
    if (payload) {
     // grab sessionID and delete from db
@@ -69,3 +70,19 @@ export const loginHandler = catchErrors(
         message: "You have successfully logged out",
     });
  });
+
+ export const refreshHandler = catchErrors(async (req, res) => {
+    const refreshToken = req.cookies.refreshToken as string | undefined;
+    appAssert(refreshToken, UNAUTHORIZED, "Refresh token is missing");
+
+    const {accessToken, newRefreshToken} = await refreshUserAccessToken(refreshToken);
+
+    if (newRefreshToken) {
+      res.cookie("refreshToken", newRefreshToken, getRefreshTokenCookieOptions());
+    }
+
+    return res.status(OK).cookie("accessToken", accessToken, getAccessTokenCookieOptions()).json({
+        status: "success",
+        message: "Access token refreshed successfully",
+ });
+});
