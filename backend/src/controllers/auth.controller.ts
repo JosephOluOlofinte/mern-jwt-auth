@@ -2,8 +2,10 @@ import { z } from "zod";
 import catchErrors from "../utils/catchErrors";
 import { createAccount, loginUser } from "../services/auth.service";
 import { CREATED, OK } from "../constants/http";
-import { setAuthCookie } from "../utils/cookies";
+import { clearAuthCookies, setAuthCookies } from "../utils/cookies";
 import { loginSchema, registerSchema } from "./auth.schemas";
+import { verifyToken } from "../utils/jwt";
+import SessionModel from "../models/session.model";
 
 
 
@@ -21,7 +23,7 @@ export const registerHandler = catchErrors(
         
 
         // return a response
-        return setAuthCookie({res, accessToken, refreshToken})
+        return setAuthCookies({res, accessToken, refreshToken})
         .status(CREATED).json({
             status: "success",
             message: "User created successfully",
@@ -45,8 +47,25 @@ export const loginHandler = catchErrors(
 
 
         // return a response
-        return setAuthCookie({res, accessToken, refreshToken}).status(OK).json({
+        return setAuthCookies({res, accessToken, refreshToken}).status(OK).json({
             status: "success",
             message: "You have successfully logged in",
+    });
+ });
+
+ export const logoutHandler = catchErrors(async (req, res) => {
+   const accessToken = req.cookies.accessToken;
+   const { payload } = verifyToken(accessToken);
+
+   if (payload) {
+    // grab sessionID and delete from db
+    await SessionModel.findByIdAndDelete(payload.sessionId);
+   }
+
+    // clear cookies
+    clearAuthCookies(res);
+    return res.status(OK).json({
+        status: "success",
+        message: "You have successfully logged out",
     });
  });

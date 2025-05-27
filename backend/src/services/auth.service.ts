@@ -1,5 +1,5 @@
-import { JWT_REFRESH_SECRET, JWT_SECRET } from "../constants/env";
-import jwt from "jsonwebtoken";
+// import { JWT_REFRESH_SECRET, JWT_SECRET } from "../constants/env";
+// import jwt from "jsonwebtoken";
 import VerificationCodeType from "../constants/verificationCodeTypes";
 import SessionModel from "../models/session.model";
 import UserModel from "../models/user.model";
@@ -7,7 +7,7 @@ import VerificationCodeModel from "../models/verificationCode.model";
 import { oneYearFromNow } from "../utils/date";
 import appAssert from "../utils/appAssert";
 import { CONFLICT, UNAUTHORIZED } from "../constants/http";
-import { refreshTokenSignOptions, signToken } from "../utils/jwt";
+import { refreshTokenSignOptions, signToken, verifyToken } from "../utils/jwt";
 
 export type CreateAccountParams = {
     email: string;
@@ -119,3 +119,4 @@ export const loginUser = async(
     refreshToken,
   };
 }
+
