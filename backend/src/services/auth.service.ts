@@ -8,6 +8,9 @@ import { ONE_DAY_IN_MS, oneYearFromNow, thirtyDaysFromNow } from "../utils/date"
 import appAssert from "../utils/appAssert";
 import { CONFLICT, INTERNAL_SERVER_ERROR, NOT_FOUND, UNAUTHORIZED } from "../constants/http";
 import { RefreshTokenPayload, refreshTokenSignOptions, signToken, verifyToken } from "../utils/jwt";
+import { sendMail } from "../utils/sendMail";
+import { getVerifyEmailTemplate } from "../utils/emailTemplates";
+import { APP_ORIGIN } from "../constants/env";
 
 
 
@@ -43,9 +46,21 @@ export const createAccount = async(data:CreateAccountParams) => {
         userId,
         type: VerificationCodeType.EmailVerification,
         expiresAt: oneYearFromNow(),
-    })
+    });
 
   // send a verification email
+  const url = `${APP_ORIGIN}/email/verify/${verificationCode._id}`;
+
+  const {
+    error
+  } = await sendMail({
+    to: user.email,
+    ...getVerifyEmailTemplate(url)
+  });
+
+  if (error) {
+    console.log(error)
+  }
 
   // create a new session
   const session = await SessionModel.create({
