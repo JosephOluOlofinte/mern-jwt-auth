@@ -1,9 +1,9 @@
 import { z } from "zod";
 import catchErrors from "../utils/catchErrors";
-import { createAccount, loginUser, refreshUserAccessToken, verifyEmail } from "../services/auth.service";
+import { createAccount, loginUser, refreshUserAccessToken, sendPasswordResetEmail, verifyEmail } from "../services/auth.service";
 import { CREATED, OK, UNAUTHORIZED } from "../constants/http";
 import { clearAuthCookies, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, setAuthCookies } from "../utils/cookies";
-import { loginSchema, registerSchema, verificationCodeSchema } from "./auth.schemas";
+import { emailSchema, loginSchema, registerSchema, verificationCodeSchema } from "./auth.schemas";
 import { verifyToken } from "../utils/jwt";
 import SessionModel from "../models/session.model";
 import appAssert from "../utils/appAssert";
@@ -96,4 +96,16 @@ export const verifyEmailHandler = catchErrors(async (req, res) => {
         status: "success",
         message: "Email successfully verified!",
     });
+});
+
+export const sendPasswordResetHandler = catchErrors(async (req, res) => {
+    const email = emailSchema.parse(req.body.email);
+
+    // call the service
+    await sendPasswordResetEmail(email);
+
+    return res.status(OK).json({
+        status: "success",
+        message: "Password reset email sent"
+    })
 })
